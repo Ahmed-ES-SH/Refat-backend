@@ -2,6 +2,9 @@
 
 Instructions for AI coding agents working in this repository (`backend/`). Read this file fully before changing anything.
 
+**Parent standard:** `docs/AI-Agent-Development-Standard.md` (full workflow reference).
+This file is the operational summary. For backend rules, this file wins. For Small tasks this file is enough; read the full standard only for Medium/High tasks or when something here is unclear.
+
 ## 1. What this project is
 
 Rifad is a **portfolio project**: a healthcare and family-care platform for the Gulf market. Patients book appointments (for themselves or family members), buy memberships through Stripe, and chat with medical centers. Centers manage doctors, availability, and bookings. Admins approve centers and manage packages and the homepage.
@@ -19,8 +22,9 @@ Rifad is a **portfolio project**: a healthcare and family-care platform for the 
 | `DESIGN.md` | UI/UX design system (shared with the frontend) |
 | `../Refat-PRD.md` | Product requirements (parent folder, covers both apps) |
 | `../frontend/rifad-frontend-plan.md` | Frontend scope; its §15 is the same Integration Contract as backend plan §13 |
-| `../frontend/AGENTS.md` | Next.js repo rules (that Next.js version differs from training data — read it there) |
+| `../frontend/AGENTS.md` | Frontend rules (Next.js; that version differs from training data, so read it there). Frontend layout and conventions live **only** there |
 | `tasks.md` (per milestone) | The current work list, once it exists. Do only what it asks |
+| `docs/AI-Agent-Development-Standard.md` | Full workflow standard |
 
 - The plan and schema currently live at the **repo root**, not in `docs/`. If they are moved, update this table and every path below.
 - The **Integration Contract** (backend plan §13 = frontend plan §15) defines how the two apps connect. If code and contract disagree, stop and report it. Do not silently pick a side.
@@ -28,50 +32,74 @@ Rifad is a **portfolio project**: a healthcare and family-care platform for the 
 
 ## 3. Current state of the repo (do not assume features exist)
 
-This is a **fresh Laravel skeleton**, not a built product yet:
+This is a **fresh Laravel skeleton**, not a built product yet. Update this section when a milestone lands, and verify with `composer show --direct` before relying on it.
 
 - Installed: Laravel 13, PHP 8.5 runtime (`composer.json` allows `^8.3`), Pest 5, Pint, Laravel Boost, Pail, Vite + Tailwind 4.
 - Present today: `app/Models/User.php`, base `Controller`, `routes/web.php`, the three default migrations, example tests.
-- **Everything in §5 (layout) and §9 (tests) is target state from the plan, not existing code.** Build it milestone by milestone (plan §14: M0 → M7).
+- **Everything in §6 (layout) and §10 (tests) is target state from the plan, not existing code.** Build it milestone by milestone (plan §14: M0 → M7).
 - Local `.env`: SQLite + `database` session/queue/cache drivers. Tests: SQLite `:memory:` (`phpunit.xml`). Docker Compose in the parent folder runs **MySQL 8.4** + phpMyAdmin + backend + frontend + queue worker.
 - **Planned but not installed yet:** Sanctum, Socialite, Stripe SDK, Reverb/Pusher, Redis, Scramble, Larastan, Mailpit/MinIO in compose. Add each one only in the milestone that needs it, as a deliberate change with approval.
 
-## 4. Hard rules
+## 4. Workflow (risk-based)
+
+Use the lightest workflow that gives enough confidence for the risk. **Risk beats size**: a small change to auth or payments is High; a large change to a simple Resource is not.
+
+| Level | Typical work here | Process |
+|---|---|---|
+| **Small** | Factories/seeders, adding a field to an existing Resource, simple read-only endpoint on non-sensitive data, docs fixes | Inspect → short brief (objective, behavior, acceptance) → implement → verify → review diff → commit |
+| **Medium** | New endpoint with Form Request + Resource, new Action, queued job or notification, an additive table from schema §8, multi-model features | Inspect → phase brief in `tasks.md` (spec + ordered tasks) → approve important decisions → implement task by task, verifying each → phase checks → review diff → commit |
+| **High** | Sanctum/Socialite auth, Policies and role isolation, Stripe + webhooks + card status, booking transactions/concurrency, chat channel auth, uploads, migrations that alter or delete existing data | Medium process + independent design review + human approval before coding |
+
+**Rules**
+- Classify the task first and state it in one line before coding (e.g. "High: billing webhooks, design review first"). Do not classify High just because many files change. An additive migration for a table already in schema §8 is Medium, not High.
+- **Heavy design review happens once per module** (auth, billing/webhooks, booking, chat, uploads). The plan section plus the schema are the spec. Later changes to that module are Medium plus the security rules in §5 and negative tests.
+- **Independent review (High only, one round):** a fresh-context agent receives only the spec and the files it references, and checks completeness, security gaps, conflicts with the schema or Integration Contract, and feasibility. Fix material findings; reject the rest and note why. EGM may be used if installed, but it is optional. A review that shares the author's context is not independent: do not call it that.
+- **One phase document:** use the task's entry in `tasks.md` and the plan's milestone (§14). Do not create overlapping docs; create documentation files only when asked. Update the entry when behavior or decisions change. If a task has no acceptance criteria, add a short brief (objective, scope, behavior, acceptance, verification) before coding.
+- **Human approval** is required when scope, architecture, security, data integrity, cost, or user-visible behavior would materially change.
+- **Skills** (use only if installed; otherwise follow the same steps manually and say so): `writing-plans` for multi-task Medium/High work · `test-driven-development` for non-trivial logic (slot computation, cancellation rules, card status) · `systematic-debugging` on any failure · `verification-before-completion` before reporting done. Do not use `executing-plans`, subagents, or worktrees unless asked. Project skills are in §13.
+- **Stuck rule:** if the same issue is unresolved after **3 attempts**, stop. Report the failure, the likely cause, what you tried, the latest error output, and what decision you need. Do not repeat cosmetic variations of a failed approach.
+- **Git:** check `git status` first. Never touch, stage, or revert unrelated changes. After each verified task, make a focused commit (Conventional Commits, one concern per commit) when the repo workflow permits. Stage only relevant files. Never commit `.env`, secrets, generated artifacts, or failing/unverified work as complete.
+- **Evidence:** the final report lists the checks run and their results, important scenarios verified, checks not run and why, and known limitations. Never claim something passed unless you ran it and read the output.
+
+## 5. Hard rules
 
 ### Scope (anti-over-engineering)
 1. Build **only** what the current task and the plans list. No bonus features.
 2. Do **not** add: microservices, CQRS, event sourcing, repositories-for-everything, module packages, generic "engines", feature flags, extra abstraction layers, or speculative interfaces (e.g. no `PaymentGateway` interface).
 3. Do **not** build anything on the plan's **Cut** list (plan §2) or schema §10: branches, services, `slots` table, benefits table, National ID, session/device management, notification preferences, role editor, `settings`/`media`/`payment_methods`/`refunds`/`reviews`/translation tables.
-4. Do **not** add a dependency unless the task requires it. Prefer what is already installed (§5). Mention any new dependency in your summary.
+4. Do **not** add a dependency unless the task requires it. Prefer what is already installed (§3). Mention any new dependency in your summary.
 5. Prefer the boring, standard Laravel way. Three similar lines beat a premature abstraction.
+6. Do not invent endpoints, columns, types, file paths, or test results.
 
 ### Database
-6. Never add or change tables, columns, indexes, or enum values that are not in `rifad-database-schema.md`. If you think one is needed, **stop and ask**.
-7. One migration per table, in schema §8 order, each with a working `down()`. Rename the default `users` migration so it sorts after `centers`.
-8. Enums are `string` columns cast to PHP backed enums (`app/Enums`). **Never** MySQL `ENUM`.
-9. Money is `unsignedInteger` minor units (`*_minor`) + `char(3)` currency. All `*_at` columns are UTC; `availability_rules.start_time/end_time` are in the center's timezone.
-10. Canonical target is **MySQL 8** (Docker/production) but tests run on **SQLite `:memory:`**. Write portable migrations and queries — no MySQL-only DDL, no `FULLTEXT`, no raw vendor-specific SQL. If a schema rule cannot work on both, stop and ask.
-11. Schema §1 requires Redis for session/queue/cache and forbids `sessions`/`jobs`/`cache` tables. That config lands with the Redis milestone; until then do not build anything that depends on those tables, and remove them when Redis is wired up.
+7. Never add or change tables, columns, indexes, or enum values that are not in `rifad-database-schema.md`. If you think one is needed, **stop and ask**.
+8. One migration per table, in schema §8 order, each with a working `down()`. Rename the default `users` migration so it sorts after `centers`.
+9. Enums are `string` columns cast to PHP backed enums (`app/Enums`). **Never** MySQL `ENUM`.
+10. Money is `unsignedInteger` minor units (`*_minor`) + `char(3)` currency. All `*_at` columns are UTC; `availability_rules.start_time/end_time` are in the center's timezone.
+11. Canonical target is **MySQL 8** (Docker/production) but tests run on **SQLite `:memory:`**. Write portable migrations and queries — no MySQL-only DDL, no `FULLTEXT`, no raw vendor-specific SQL. If a schema rule cannot work on both, stop and ask.
+12. Schema §1 requires Redis for session/queue/cache and forbids `sessions`/`jobs`/`cache` tables. That config lands with the Redis milestone; until then do not build anything that depends on those tables, and remove them when Redis is wired up.
 
 ### Security (non-negotiable)
-12. Every endpoint is authorized on the backend (route middleware + Policy + scoped query). Frontend checks are cosmetic only.
-13. Auth is Sanctum **SPA cookie** auth. **No tokens in JavaScript, localStorage, or sessionStorage. Ever.**
-14. Other users' resources return **404**, not 403, to avoid ID enumeration (family members, appointments, conversations).
-15. Validate with Form Requests (backend) and mirror with Zod (frontend). Backend validation is authoritative.
-16. Stripe: verify the signature on the **raw body**, record `event.id` for idempotency, respond 2xx fast, process in a queued job. **Only a verified webhook activates a subscription or card**, never the success page.
-17. Uploads: validate size, sniff the real MIME type, allowlist extensions, random file names, private disk, short-lived signed URLs.
-18. Never log secrets, tokens, or personal data. Never commit `.env` or real keys. Never store card data.
-19. Mass-assignment protection and parameterized queries only. Never use `dangerouslySetInnerHTML` (frontend).
+13. Every endpoint is authorized on the backend (route middleware + Policy + scoped query). Frontend checks are cosmetic only.
+14. Auth is Sanctum **SPA cookie** auth. **No tokens in JavaScript, localStorage, or sessionStorage. Ever.**
+15. Other users' resources return **404**, not 403, to avoid ID enumeration (family members, appointments, conversations).
+16. Validate with Form Requests (backend) and mirror with Zod (frontend). Backend validation is authoritative.
+17. Stripe: verify the signature on the **raw body**, record `event.id` for idempotency, respond 2xx fast, process in a queued job. **Only a verified webhook activates a subscription or card**, never the success page.
+18. Amounts, prices, and plan IDs come from the database. Never trust an amount sent by the client.
+19. Uploads: validate size, sniff the real MIME type, allowlist extensions, random file names, private disk, short-lived signed URLs.
+20. Throttle auth, verification, upload, and chat-send endpoints.
+21. Never log secrets, tokens, or personal data. Never commit `.env` or real keys. Never store card data.
+22. Mass-assignment protection and parameterized queries only.
 
-## 5. Stack and layout
+## 6. Stack and layout
 
 ### Stack
 **Installed now:** Laravel 13, PHP 8.5, Pest 5, Pint, Boost, Vite + Tailwind 4, SQLite (dev/tests).
 **Per plan (add per milestone):** MySQL 8, Redis, Sanctum, Socialite (Google), Stripe PHP SDK, Laravel Reverb, Scramble (OpenAPI), Larastan, Docker Compose + Caddy, GitHub Actions.
-**Frontend (sibling repo `../frontend`):** Next.js 16 App Router, React 19, TypeScript strict, Tailwind 4; TanStack Query, React Hook Form + Zod, next-intl, laravel-echo + pusher-js, Playwright, Vitest are planned, not installed.
+**Frontend:** sibling repo `../frontend`. Its stack and layout are defined in `../frontend/AGENTS.md`, not here.
 **Deployment:** plan §11 = Docker Compose + Caddy + single VPS with GitHub Actions. The `deploying-to-cloud` skill applies only if the project actually moves to Laravel Cloud.
 
-Verify versions before relying on an API: `composer show --direct`, `cat package.json` (frontend), or the relevant Boost tool. Do not assume a package's behavior from memory.
+Verify versions before relying on an API: `composer show --direct` or the relevant Boost tool. Do not assume a package's behavior from memory.
 
 ### Backend layout (target)
 ```
@@ -87,25 +115,13 @@ routes/api_v1.php  routes/channels.php
 - Create an Action only when a business rule spans several steps or needs a transaction. Simple CRUD stays in the controller.
 - Every response goes through an API Resource. Every list is paginated (`per_page` max 50; chat uses cursor pagination).
 
-### Frontend layout (sibling repo, for contract awareness)
-```
-src/app/[locale]/(public|auth|patient|center|admin)/...
-src/features/<feature>/     booking, family, membership, chat, notifications, center, admin, cms, auth
-src/lib/                    api client, auth (useMe), echo, format, i18n
-src/components/ui/          shadcn + shared states
-src/messages/               ar.json, en.json
-```
-Public pages are server components; dashboards are client components with TanStack Query. Types come from the generated OpenAPI file. Every page/list has loading, empty, and error states.
-
-## 6. Conventions
+## 7. Conventions
 
 **Backend:** PSR-12 via Pint · typed properties/params/returns · Form Requests · Policies · eager loading and no N+1 (`Model::preventLazyLoading()` on outside production) · queue anything slow (mail, notifications, Stripe event processing).
 **API:** JSON under `/api/v1` · Laravel API Resources · error envelope `{ message, code, errors }` with stable machine codes (`EMAIL_NOT_VERIFIED`, `SLOT_TAKEN`, `CANCEL_WINDOW_PASSED`, `MEMBER_HAS_FUTURE_APPOINTMENTS`, `CARD_NOT_ACTIVE`) · ISO-8601 UTC datetimes · `Accept-Language: ar|en` · `409` for slot conflicts · Scramble-generated OpenAPI, exported in CI.
-**Frontend:** TypeScript strict, no `any` · TanStack Query for async (no ad-hoc `useEffect` fetching) · React Hook Form + Zod · Tailwind logical utilities (`ms-`, `me-`, `ps-`, `pe-`, `text-start`) so RTL works · all user-facing text via `next-intl`.
-**Naming:** `snake_case` DB, `camelCase` JS/TS, `PascalCase` classes/components, `kebab-case` route segments.
-**Commits:** Conventional Commits (`feat:`, `fix:`, `test:`, `docs:`, `chore:`), small and focused, one concern per commit.
+**Naming:** `snake_case` DB, `PascalCase` classes, `kebab-case` route segments.
 
-## 7. Commands
+## 8. Commands
 
 ```bash
 # Host-local backend
@@ -125,47 +141,55 @@ make migrate | fresh | seed
 make artisan ARGS="route:list"
 make sh-backend
 ```
-**Not installed yet — do not run until the milestone adds them:** `./vendor/bin/phpstan analyse` (Larastan), `php artisan scramble:export` (Scramble), frontend `npm run test` / `test:e2e` / `gen:api`. Frontend today only has `npm run dev|build|start|lint`.
+**Not installed yet — do not run until the milestone adds them:** `./vendor/bin/phpstan analyse` (Larastan), `php artisan scramble:export` (Scramble).
 
-## 8. How to work
+## 9. How to work
 
-1. Read the current milestone in plan §14 and any `tasks.md`, then the plan sections it references.
-2. Do the smallest change that satisfies the task and its acceptance criteria. Do not refactor unrelated code.
-3. Write or update tests **with** the feature (§9).
-4. Run Pint and the relevant tests before declaring work done. Run Larastan/Scramble only once installed.
-5. Finish with a short summary: what changed, what you tested, new dependencies (if any), and anything you were unsure about.
+1. Read the current milestone in plan §14 and any `tasks.md`, then the plan sections it references. Check `git status`.
+2. Classify the task (§4) and state the workflow in one line.
+3. Do the smallest change that satisfies the task and its acceptance criteria. Do not refactor unrelated code.
+4. Write or update tests **with** the feature (§10).
+5. Verify each meaningful task: Pint and the relevant tests. Run Larastan/Scramble only once installed.
+6. Finish with a short summary: what changed, evidence (checks run and results, checks not run and why), new dependencies (if any), and anything you were unsure about.
 
 **Stop and ask (do not guess) when:**
 - the task needs a table, column, endpoint, or dependency not in the docs;
 - docs conflict with each other or with existing code;
 - a requirement is ambiguous in a way that changes behavior (money, permissions, data deletion);
-- you would need to weaken a security rule from §4 to finish;
+- you would need to weaken a security rule from §5 to finish;
 - you would have to add something from the Cut list (plan §2 / schema §10).
 
-## 9. Testing requirements
+Do not ask for information already present in the project files.
 
-- **Backend must-haves:** auth throttling and verification gate · role/ownership isolation (404 vs 403) · booking happy path, cancel cutoff, reschedule atomicity · **concurrent booking on one slot → exactly one `201`, the rest `409`** · Stripe webhook (bad signature, duplicate event, out-of-order event, renewal extends card, failed payment suspends card) · chat channel authorization · upload rejection (type and size).
-- **Unit tests:** slot computation, cancellation rules, card status derivation.
+## 10. Testing
+
+Test behavior and risk, not every line. No coverage target. Do not add tests just to raise the count.
+
+- **Must-haves:** auth throttling and verification gate · role/ownership isolation (404 vs 403) · booking happy path, cancel cutoff, reschedule atomicity · **concurrent booking on one slot → exactly one `201`, the rest `409`** · Stripe webhook (bad signature, duplicate event, out-of-order event, renewal extends card, failed payment suspends card) · chat channel authorization · upload rejection (type and size).
+- **Unit tests:** slot computation, cancellation rules, card status derivation. Skip trivial getters and plain CRUD with no logic.
+- **High-risk features** need negative tests: forbidden access, invalid input, duplicate requests, unauthorized state changes.
+- **Concurrency caveat:** tests run on SQLite `:memory:`, so a truly parallel-request test needs MySQL (Docker/CI). On SQLite only the sequential duplicate-booking check is meaningful. Do not claim concurrency is proven from a SQLite run.
 - **Static:** Pint; Larastan (level 5+) once added. CI runs tests with MySQL + Redis services.
-- **Frontend** (sibling repo): Playwright golden paths (register → verify → book; buy membership; live chat; center confirms; admin approves) plus a few Vitest unit tests (Zod schemas, date formatting, CMS registry).
 - Every bug fix gets a regression test. Do not delete or weaken a failing test to make it pass; fix the cause or ask.
+- Report any skipped or unavailable check honestly, with the reason and the remaining risk.
 
-## 10. Definition of done (per feature)
+## 11. Definition of done (per feature)
 
 - [ ] Matches the task, `rifad-database-schema.md`, and the Integration Contract
 - [ ] Authorization enforced and negatively tested
-- [ ] Tests added and passing; Pint clean (Larastan/`tsc`/ESLint once installed)
-- [ ] Works in both Arabic (RTL) and English (LTR) if it has UI
-- [ ] Loading, empty, and error states present if it has UI
+- [ ] Tests added and passing; Pint clean (Larastan once installed)
+- [ ] User-facing API messages respect `Accept-Language` (ar|en)
 - [ ] No new tables, columns, or dependencies beyond the docs (or they are flagged)
 - [ ] API change reflected in the exported OpenAPI and coordinated with the frontend
+- [ ] Diff contains no unrelated changes; focused commit made where permitted
+- [ ] Evidence summary written (checks run, not run and why, limitations)
 
-## 11. Priorities if time is short
+## 12. Priorities if time is short
 
 Cut in this order: newsletter → CMS editor (keep the seeded homepage) → voice messages → reminders → chat image uploads.
 **Never cut:** booking concurrency protection, Stripe webhook handling, authorization tests.
 
-## 12. Project skills
+## 13. Project skills
 
 Activate the matching skill before working in that domain. Load it with the `skill` tool when it is registered; otherwise read `.agents/skills/<name>/SKILL.md` (mirrored in `.claude/skills/`).
 
