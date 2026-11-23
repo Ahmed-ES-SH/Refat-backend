@@ -5,6 +5,8 @@ Instructions for AI coding agents working in this repository (`backend/`). Read 
 **Parent standard:** `docs/AI-Agent-Development-Standard.md` (full workflow reference).
 This file is the operational summary. For backend rules, this file wins. For Small tasks this file is enough; read the full standard only for Medium/High tasks or when something here is unclear.
 
+> **Docker first (hard rule):** every `php artisan` command (tests, migrations, seeders, `route:list`, `scramble:export`, `config:show`, `make:*`, tinker, …) runs **inside the Docker backend container**, never on the host. See §8. Start Docker first if it is not running (`make start` from the parent folder). Only fall back to a host-local artisan run if Docker cannot be started, and say so explicitly in your report.
+
 ## 1. What this project is
 
 Rifad is a **portfolio project**: a healthcare and family-care platform for the Gulf market. Patients book appointments (for themselves or family members), buy memberships through Stripe, and chat with medical centers. Centers manage doctors, availability, and bookings. Admins approve centers and manage packages and the homepage.
@@ -118,30 +120,38 @@ routes/api_v1.php  routes/channels.php
 ## 7. Conventions
 
 **Backend:** PSR-12 via Pint · typed properties/params/returns · Form Requests · Policies · eager loading and no N+1 (`Model::preventLazyLoading()` on outside production) · queue anything slow (mail, notifications, Stripe event processing).
-**API:** JSON under `/api/v1` · Laravel API Resources · error envelope `{ message, code, errors }` with stable machine codes (`EMAIL_NOT_VERIFIED`, `SLOT_TAKEN`, `CANCEL_WINDOW_PASSED`, `MEMBER_HAS_FUTURE_APPOINTMENTS`, `CARD_NOT_ACTIVE`) · ISO-8601 UTC datetimes · `Accept-Language: ar|en` · `409` for slot conflicts · Scramble-generated OpenAPI, exported in CI **and after each feature/phase via `php artisan scramble:export`**.
+**API:** JSON under `/api/v1` · Laravel API Resources · error envelope `{ message, code, errors }` with stable machine codes (`EMAIL_NOT_VERIFIED`, `SLOT_TAKEN`, `CANCEL_WINDOW_PASSED`, `MEMBER_HAS_FUTURE_APPOINTMENTS`, `CARD_NOT_ACTIVE`) · ISO-8601 UTC datetimes · `Accept-Language: ar|en` · `409` for slot conflicts · Scramble-generated OpenAPI, exported in CI **and after each feature/phase via `make artisan ARGS="scramble:export"` (Docker, §8)**.
 **Naming:** `snake_case` DB, `PascalCase` classes, `kebab-case` route segments.
 
 ## 8. Commands
 
-```bash
-# Host-local backend
-php artisan test --compact            # narrowest failing/changed test set
-composer test                         # config:clear + full suite
-vendor/bin/pint --dirty --format agent   # format changed files
-vendor/bin/pint --format agent           # format everything
-composer run dev                      # artisan dev (app + vite)
-npm run build                         # Vite/Tailwind assets
-php artisan migrate:fresh --seed      # rebuild demo DB
-php artisan route:list --except-vendor
-php artisan config:show database.default
-php artisan scramble:export           # generate OpenAPI docs (public/docs/api/openapi.json)
+**All `php artisan` commands run in Docker, not on the host.** Docker Compose lives in the parent folder (with `compose.yaml` + `Makefile`); the `backend` service is the PHP container.
 
-# Docker (run from the parent folder that holds compose.yaml)
+```bash
+# Docker lifecycle — run from the parent folder that holds compose.yaml
 make up | start | stop | down | logs | ps
-make migrate | fresh | seed
-make artisan ARGS="route:list"
-make sh-backend
+make sh-backend                          # shell inside the backend container
+
+# Every artisan command goes through Docker
+make artisan ARGS="test --compact"       # narrowest failing/changed test set
+make artisan ARGS="test"                 # full suite
+make artisan ARGS="route:list --except-vendor"
+make artisan ARGS="config:show database.default"
+make artisan ARGS="migrate:fresh --seed" # rebuild demo DB (or: make fresh && make seed)
+make artisan ARGS="scramble:export"      # OpenAPI docs → public/docs/api/openapi.json
+make artisan ARGS="make:test --pest Foo" # any make:* / tinker / console command
+
+# Same thing without make (from the parent folder)
+docker compose exec backend php artisan <command>
+
+# Pint (not artisan, but still inside the container)
+docker compose exec backend vendor/bin/pint --dirty --format agent   # changed files
+docker compose exec backend vendor/bin/pint --format agent           # everything
 ```
+
+If Docker is not running, start it first (`make start` from the parent folder) — do **not** switch to host-local artisan as a shortcut. Only if Docker genuinely cannot start, run the command on the host and state that explicitly in your report.
+
+**Frontend / assets (host-local, no Docker required):** `npm run build`, `composer run dev`.
 **Not installed yet — do not run until the milestone adds them:** `./vendor/bin/phpstan analyse` (Larastan).
 
 ## 9. How to work
@@ -150,8 +160,8 @@ make sh-backend
 2. Classify the task (§4) and state the workflow in one line.
 3. Do the smallest change that satisfies the task and its acceptance criteria. Do not refactor unrelated code.
 4. Write or update tests **with** the feature (§10).
-5. Verify each meaningful task: Pint and the relevant tests. Run Larastan/Scramble only once installed.
-6. **Export OpenAPI docs**: after each completed feature/phase, run `php artisan scramble:export` to regenerate `public/docs/api/openapi.json` and verify new endpoints appear in `/docs/api`.
+5. Verify each meaningful task: Pint and the relevant tests (both in Docker, §8). Run Larastan/Scramble only once installed.
+6. **Export OpenAPI docs**: after each completed feature/phase, run `make artisan ARGS="scramble:export"` (from the parent folder) to regenerate `public/docs/api/openapi.json` and verify new endpoints appear in `/docs/api`.
 7. Finish with a short summary: what changed, evidence (checks run and results, checks not run and why), new dependencies (if any), and anything you were unsure about.
 
 **Stop and ask (do not guess) when:**
@@ -183,7 +193,7 @@ Test behavior and risk, not every line. No coverage target. Do not add tests jus
 - [ ] User-facing API messages respect `Accept-Language` (ar|en)
 - [ ] No new tables, columns, or dependencies beyond the docs (or they are flagged)
 - [ ] API change reflected in the exported OpenAPI and coordinated with the frontend
-- [ ] **OpenAPI docs updated**: run `php artisan scramble:export` after each feature/phase; verify new endpoints appear in `/docs/api`
+- [ ] **OpenAPI docs updated**: run `make artisan ARGS="scramble:export"` (Docker, §8) after each feature/phase; verify new endpoints appear in `/docs/api`
 - [ ] Diff contains no unrelated changes; focused commit made where permitted
 - [ ] Evidence summary written (checks run, not run and why, limitations)
 
