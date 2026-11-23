@@ -96,8 +96,9 @@ Each phase ends with something demo-able. Frontend work for the same phase happe
 - Sanctum SPA config for a single origin, error envelope `{ message, code, errors }`, request-ID middleware, JSON logs, `/up`.
 - Enums, `lang/en` + `lang/ar`, Scramble, Pint, Larastan, Pest.
 - GitHub Actions: Pint → Larastan → Pest (MySQL + Redis services).
+- **Export OpenAPI docs**: `php artisan scramble:export` to generate `public/docs/api/openapi.json`; serve at `/docs/api` via Caddy.
 
-**Exit:** CI green; frontend "hello" page calls `GET /api/v1/ping` through Caddy with a real cookie session.
+**Exit:** CI green; frontend "hello" page calls `GET /api/v1/ping` through Caddy with a real cookie session; OpenAPI docs accessible at `/docs/api`.
 
 ### Phase 1 — Identity and family (weeks 2–3)
 **Build**
@@ -109,6 +110,7 @@ Each phase ends with something demo-able. Frontend work for the same phase happe
 
 **Tests:** throttling, verification gate, 404-vs-403 isolation, reset token expiry and single use.
 **Exit:** register → verify → login → add family member.
+**OpenAPI:** Run `php artisan scramble:export` after phase completion; verify new auth/family endpoints appear in `/docs/api`.
 
 ### Phase 2 — Centers, doctors, availability, directory (weeks 4–5)
 **Build**
@@ -120,6 +122,7 @@ Each phase ends with something demo-able. Frontend work for the same phase happe
 
 **Tests:** slot computation unit tests (multiple windows, days off, timezone/DST-free Gulf zones, past times), center isolation.
 **Exit:** center registers → admin approves → appears in directory with bookable slots.
+**OpenAPI:** Run `php artisan scramble:export` after phase completion; verify centers/doctors/availability/slots endpoints appear in `/docs/api`.
 
 ### Phase 3 — Booking and notifications (weeks 6–7)
 **Build**
@@ -131,6 +134,7 @@ Each phase ends with something demo-able. Frontend work for the same phase happe
 
 **Tests (must):** happy path, cancel cutoff, reschedule atomicity, **parallel requests on one slot → exactly one 201, rest 409**.
 **Exit:** patient books for a family member → center confirms → both notified.
+**OpenAPI:** Run `php artisan scramble:export` after phase completion; verify booking/appointments endpoints appear in `/docs/api`.
 
 ### Phase 4 — Membership and Stripe (weeks 8–9)
 **Build**
@@ -145,6 +149,7 @@ Each phase ends with something demo-able. Frontend work for the same phase happe
 
 **Tests (must):** bad signature, duplicate event, out-of-order event, renewal extends `current_period_end`, failed payment makes card `suspended`, card status derivation table.
 **Exit:** buy membership with a test card → card appears → center verifies it.
+**OpenAPI:** Run `php artisan scramble:export` after phase completion; verify billing/packages/subscriptions/card verify endpoints appear in `/docs/api`.
 
 ### Phase 5 — Chat and live notifications (weeks 10–11)
 **Build**
@@ -157,6 +162,7 @@ Each phase ends with something demo-able. Frontend work for the same phase happe
 
 **Tests:** channel authorization (outsider rejected), upload rejection (type/size), unread counting, message ordering.
 **Exit:** two browsers chat live; the bell updates live; if Reverb is down the UI still works by refetching.
+**OpenAPI:** Run `php artisan scramble:export` after phase completion; verify chat/conversations/messages/broadcasting auth endpoints appear in `/docs/api`.
 
 ### Phase 6 — Admin and CMS (week 12)
 **Build**
@@ -166,6 +172,7 @@ Each phase ends with something demo-able. Frontend work for the same phase happe
 
 **Tests:** admin-only access (negative tests for patient and staff), CMS validation per type.
 **Exit:** admin edits the homepage → public site updates within a minute.
+**OpenAPI:** Run `php artisan scramble:export` after phase completion; verify admin/CMS endpoints appear in `/docs/api`.
 
 ### Phase 7 — Hardening, deploy, docs (week 13)
 **Build**
@@ -177,6 +184,7 @@ Each phase ends with something demo-able. Frontend work for the same phase happe
 - README: architecture diagram, setup in ≤ 5 commands, Stripe test cards, load results, known limitations.
 
 **Exit:** public demo URL with demo accounts; all checklist items in section 11 ticked.
+**OpenAPI:** Run `php artisan scramble:export` in CI/CD pipeline; final `openapi.json` published at `/docs/api` and used by frontend for type generation.
 
 **Cut order if late:** CMS editor (keep seeded homepage) → voice → reminders → image uploads → nightly reset. **Never cut:** booking concurrency, webhooks, authorization tests.
 
@@ -208,6 +216,7 @@ Tables: `users, family_members, centers, doctors, availability_rules, days_off, 
 - Page lists: `{ data, meta: { page, per_page, total } }` (`per_page` ≤ 50). Chat: `{ data, meta: { next_cursor } }` + `?after_id=`.
 - `Accept-Language: ar|en` for emails and validation; `PATCH /me { locale }` persists it.
 - Dates ISO-8601 UTC; `center.timezone` for display.
+- **OpenAPI documentation**: After every completed feature/phase, run `php artisan scramble:export` to regenerate `public/docs/api/openapi.json`. The docs are served at `/docs/api` and used by the frontend for type generation. CI pipeline must include this export step.
 
 **Revised integration contract (mirror this in the frontend plan):**
 

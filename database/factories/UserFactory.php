@@ -2,10 +2,13 @@
 
 namespace Database\Factories;
 
+use App\Enums\Locale;
+use App\Enums\UserRole;
+use App\Enums\UserStatus;
+use App\Models\Center;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 /**
  * @extends Factory<User>
@@ -29,7 +32,9 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
-            'remember_token' => Str::random(10),
+            'role' => UserRole::Patient,
+            'status' => UserStatus::Active,
+            'locale' => Locale::Ar,
         ];
     }
 
@@ -40,6 +45,45 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    /**
+     * A suspended account, which may not sign in.
+     */
+    public function suspended(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => UserStatus::Suspended,
+        ]);
+    }
+
+    public function admin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Admin,
+        ]);
+    }
+
+    /**
+     * A staff account bound to a center (created when none is given).
+     */
+    public function centerStaff(?Center $center = null): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::CenterStaff,
+            'center_id' => $center?->id ?? Center::factory(),
+        ]);
+    }
+
+    /**
+     * A Google-only account: no password, email already trusted.
+     */
+    public function googleOnly(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'password' => null,
+            'google_id' => (string) fake()->unique()->numerify('################'),
         ]);
     }
 }

@@ -15,7 +15,7 @@ use Tests\TestCase;
 */
 
 pest()->extend(TestCase::class)
- // ->use(RefreshDatabase::class)
+    ->use(RefreshDatabase::class)
     ->in('Feature');
 
 /*
@@ -44,7 +44,11 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * Mark the request as coming from the SPA so Sanctum applies its stateful
+ * (session cookie) middleware.
+ */
+function asSpa(): TestCase
 {
-    // ..
+    return test()->withHeader('Referer', (string) config('app.frontend_url'));
 }
