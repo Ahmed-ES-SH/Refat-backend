@@ -118,7 +118,7 @@ routes/api_v1.php  routes/channels.php
 ## 7. Conventions
 
 **Backend:** PSR-12 via Pint · typed properties/params/returns · Form Requests · Policies · eager loading and no N+1 (`Model::preventLazyLoading()` on outside production) · queue anything slow (mail, notifications, Stripe event processing).
-**API:** JSON under `/api/v1` · Laravel API Resources · error envelope `{ message, code, errors }` with stable machine codes (`EMAIL_NOT_VERIFIED`, `SLOT_TAKEN`, `CANCEL_WINDOW_PASSED`, `MEMBER_HAS_FUTURE_APPOINTMENTS`, `CARD_NOT_ACTIVE`) · ISO-8601 UTC datetimes · `Accept-Language: ar|en` · `409` for slot conflicts · Scramble-generated OpenAPI, exported in CI.
+**API:** JSON under `/api/v1` · Laravel API Resources · error envelope `{ message, code, errors }` with stable machine codes (`EMAIL_NOT_VERIFIED`, `SLOT_TAKEN`, `CANCEL_WINDOW_PASSED`, `MEMBER_HAS_FUTURE_APPOINTMENTS`, `CARD_NOT_ACTIVE`) · ISO-8601 UTC datetimes · `Accept-Language: ar|en` · `409` for slot conflicts · Scramble-generated OpenAPI, exported in CI **and after each feature/phase via `php artisan scramble:export`**.
 **Naming:** `snake_case` DB, `PascalCase` classes, `kebab-case` route segments.
 
 ## 8. Commands
@@ -134,6 +134,7 @@ npm run build                         # Vite/Tailwind assets
 php artisan migrate:fresh --seed      # rebuild demo DB
 php artisan route:list --except-vendor
 php artisan config:show database.default
+php artisan scramble:export           # generate OpenAPI docs (public/docs/api/openapi.json)
 
 # Docker (run from the parent folder that holds compose.yaml)
 make up | start | stop | down | logs | ps
@@ -141,7 +142,7 @@ make migrate | fresh | seed
 make artisan ARGS="route:list"
 make sh-backend
 ```
-**Not installed yet — do not run until the milestone adds them:** `./vendor/bin/phpstan analyse` (Larastan), `php artisan scramble:export` (Scramble).
+**Not installed yet — do not run until the milestone adds them:** `./vendor/bin/phpstan analyse` (Larastan).
 
 ## 9. How to work
 
@@ -150,7 +151,8 @@ make sh-backend
 3. Do the smallest change that satisfies the task and its acceptance criteria. Do not refactor unrelated code.
 4. Write or update tests **with** the feature (§10).
 5. Verify each meaningful task: Pint and the relevant tests. Run Larastan/Scramble only once installed.
-6. Finish with a short summary: what changed, evidence (checks run and results, checks not run and why), new dependencies (if any), and anything you were unsure about.
+6. **Export OpenAPI docs**: after each completed feature/phase, run `php artisan scramble:export` to regenerate `public/docs/api/openapi.json` and verify new endpoints appear in `/docs/api`.
+7. Finish with a short summary: what changed, evidence (checks run and results, checks not run and why), new dependencies (if any), and anything you were unsure about.
 
 **Stop and ask (do not guess) when:**
 - the task needs a table, column, endpoint, or dependency not in the docs;
@@ -181,6 +183,7 @@ Test behavior and risk, not every line. No coverage target. Do not add tests jus
 - [ ] User-facing API messages respect `Accept-Language` (ar|en)
 - [ ] No new tables, columns, or dependencies beyond the docs (or they are flagged)
 - [ ] API change reflected in the exported OpenAPI and coordinated with the frontend
+- [ ] **OpenAPI docs updated**: run `php artisan scramble:export` after each feature/phase; verify new endpoints appear in `/docs/api`
 - [ ] Diff contains no unrelated changes; focused commit made where permitted
 - [ ] Evidence summary written (checks run, not run and why, limitations)
 
