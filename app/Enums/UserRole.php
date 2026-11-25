@@ -17,4 +17,19 @@ enum UserRole: string
     {
         return config("permissions.roles.{$this->value}", []);
     }
+
+    public function isAdmin(): bool
+    {
+        return $this === self::Admin;
+    }
+
+    public function isCenterStaff(): bool
+    {
+        return $this === self::CenterStaff;
+    }
+
+    public function isPatient(): bool
+    {
+        return $this === self::Patient;
+    }
 }

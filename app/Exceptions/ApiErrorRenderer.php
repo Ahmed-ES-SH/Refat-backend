@@ -2,6 +2,7 @@
 
 namespace App\Exceptions;
 
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\JsonResponse;
@@ -64,6 +65,19 @@ class ApiErrorRenderer
 
         if ($e instanceof NotFoundHttpException) {
             return [404, 'NOT_FOUND', __('http.not_found'), []];
+        }
+
+        // A policy that denies with `denyAsNotFound()` raises an authorization
+        // exception carrying a 404 status, not a not-found exception.
+        if ($e instanceof AuthorizationException) {
+            $status = $e->hasStatus() ? (int) $e->status() : 403;
+
+            return [
+                $status,
+                $this->codeForStatus($status),
+                $status === 404 ? __('http.not_found') : __('http.forbidden'),
+                [],
+            ];
         }
 
         if ($e instanceof HttpExceptionInterface) {

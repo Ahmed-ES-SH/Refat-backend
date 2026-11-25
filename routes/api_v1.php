@@ -1,11 +1,15 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Admin\CenterAdminController;
 use App\Http\Controllers\Api\V1\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Api\V1\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Api\V1\Auth\NewPasswordController;
 use App\Http\Controllers\Api\V1\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Api\V1\Auth\RegisteredUserController;
 use App\Http\Controllers\Api\V1\Auth\VerifyEmailController;
+use App\Http\Controllers\Api\V1\Centers\CenterDirectoryController;
+use App\Http\Controllers\Api\V1\Centers\CenterProfileController;
+use App\Http\Controllers\Api\V1\Centers\CenterRegistrationController;
 use App\Http\Controllers\Api\V1\Family\FamilyMemberController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -47,6 +51,32 @@ Route::prefix('v1')->group(function (): void {
         ->whereNumber('id')
         ->name('verification.verify');
 
+    // Public center registration (throttled)
+    Route::post('centers/register', [CenterRegistrationController::class, 'store'])
+        ->middleware('throttle:center-register')
+        ->name('api.v1.centers.register');
+
+    // Public center directory
+    Route::get('centers', [CenterDirectoryController::class, 'index'])
+        ->name('api.v1.centers.index');
+
+    Route::get('centers/{center}', [CenterDirectoryController::class, 'show'])
+        ->whereNumber('center')
+        ->name('api.v1.centers.show');
+
+    // Admin center management
+    Route::middleware(['auth:sanctum', 'active'])->prefix('admin')->group(function (): void {
+        Route::post('centers/{center}/approve', [CenterAdminController::class, 'approve'])
+            ->middleware('can:approve,center')
+            ->whereNumber('center')
+            ->name('api.v1.admin.centers.approve');
+
+        Route::post('centers/{center}/suspend', [CenterAdminController::class, 'suspend'])
+            ->middleware('can:suspend,center')
+            ->whereNumber('center')
+            ->name('api.v1.admin.centers.suspend');
+    });
+
     // Authenticated endpoints.
     Route::middleware(['auth:sanctum', 'active'])->group(function (): void {
         Route::post('auth/logout', [AuthenticatedSessionController::class, 'destroy'])
@@ -87,5 +117,20 @@ Route::prefix('v1')->group(function (): void {
         Route::delete('me/family-members/{familyMember}', [FamilyMemberController::class, 'destroy'])
             ->whereNumber('familyMember')
             ->name('api.v1.family.destroy');
+
+        // Center staff profile management. The prefix must not collide with the
+        // public directory route above: Laravel keys routes by method + URI, so a
+        // second GET on `centers/{center}` would silently replace the public one.
+        Route::middleware('can:update,center')->prefix('center/profile/{center}')->whereNumber('center')->group(function (): void {
+            Route::get('/', [CenterProfileController::class, 'show'])
+                ->name('api.v1.centers.profile.show');
+
+            Route::patch('/', [CenterProfileController::class, 'update'])
+                ->middleware('throttle:sensitive')
+                ->name('api.v1.centers.profile.update');
+
+            Route::delete('/logo', [CenterProfileController::class, 'deleteLogo'])
+                ->name('api.v1.centers.profile.logo.destroy');
+        });
     });
 });
