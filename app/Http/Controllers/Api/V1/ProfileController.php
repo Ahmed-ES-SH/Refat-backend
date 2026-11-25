@@ -20,8 +20,7 @@ class ProfileController extends Controller
     public function update(UpdateProfileRequest $request): UserResource
     {
         $user = $request->user();
-        $user->fill($request->validated());
-        $user->save();
+        $user->update($request->validated());
 
         return UserResource::make($user);
     }

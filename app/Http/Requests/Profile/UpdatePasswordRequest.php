@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests\Profile;
 
+use App\Support\PasswordPolicy;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rules\Password;
 
 class UpdatePasswordRequest extends FormRequest
 {
@@ -24,7 +24,7 @@ class UpdatePasswordRequest extends FormRequest
                 'string',
                 'confirmed',
                 'different:current_password',
-                Password::min(8),
+                PasswordPolicy::forPatients(),
             ],
         ];
     }
