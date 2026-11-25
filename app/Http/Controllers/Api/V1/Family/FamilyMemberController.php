@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Family;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Family\FamilyMemberIndexRequest;
 use App\Http\Requests\Family\StoreFamilyMemberRequest;
 use App\Http\Requests\Family\UpdateFamilyMemberRequest;
 use App\Http\Resources\FamilyMemberResource;
@@ -14,16 +15,14 @@ use Illuminate\Http\Response;
 
 class FamilyMemberController extends Controller
 {
-    private const MAX_PER_PAGE = 50;
+    private const PER_PAGE = 15;
 
-    public function index(Request $request): JsonResponse
+    public function index(FamilyMemberIndexRequest $request): JsonResponse
     {
-        $perPage = min(max((int) $request->integer('per_page', 15), 1), self::MAX_PER_PAGE);
-
         $members = $request->user()
             ->familyMembers()
             ->orderBy('id')
-            ->paginate($perPage);
+            ->paginate($request->integer('per_page', self::PER_PAGE));
 
         return ApiResponse::paginated($members, FamilyMemberResource::class);
     }
@@ -37,17 +36,17 @@ class FamilyMemberController extends Controller
             ->setStatusCode(201);
     }
 
-    public function show(Request $request, int $familyMember): FamilyMemberResource
+    public function show(Request $request, int $familyMember): JsonResponse
     {
-        return FamilyMemberResource::make($this->findOwned($request, $familyMember));
+        return (new FamilyMemberResource($this->findOwned($request, $familyMember)))->response();
     }
 
-    public function update(UpdateFamilyMemberRequest $request, int $familyMember): FamilyMemberResource
+    public function update(UpdateFamilyMemberRequest $request, int $familyMember): JsonResponse
     {
         $member = $this->findOwned($request, $familyMember);
         $member->update($request->validated());
 
-        return FamilyMemberResource::make($member);
+        return (new FamilyMemberResource($member))->response();
     }
 
     public function destroy(Request $request, int $familyMember): Response

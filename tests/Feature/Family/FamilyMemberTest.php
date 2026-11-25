@@ -23,12 +23,12 @@ it('lists only the owner family members', function () {
         ->assertJsonPath('meta.per_page', 15);
 });
 
-it('caps per_page at fifty', function () {
+it('rejects a per_page above the cap', function () {
     Sanctum::actingAs($this->user);
 
     $this->getJson('/api/v1/me/family-members?per_page=500')
-        ->assertOk()
-        ->assertJsonPath('meta.per_page', 50);
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('per_page');
 });
 
 it('creates a family member', function () {
