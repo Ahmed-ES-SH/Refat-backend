@@ -8,6 +8,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * A full-day exception for a doctor.
+ *
+ * `date` is a calendar date in the center's timezone, not a moment in time,
+ * so it stays a `Y-m-d` string: a `date` cast would serialize it to a
+ * datetime and break the `(doctor_id, date)` uniqueness check.
+ */
 #[Fillable([
     'doctor_id',
     'date',
@@ -24,18 +31,6 @@ class DayOff extends Model
      * @var string
      */
     protected $table = 'days_off';
-
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'date' => 'date',
-        ];
-    }
 
     /**
      * The doctor this day off belongs to.

@@ -26,6 +26,16 @@ class AvailabilityRule extends Model
     use HasFactory;
 
     /**
+     * Mirrors the column default so a rule created without a slot length
+     * carries one before the row is read back.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'slot_minutes' => 30,
+    ];
+
+    /**
      * Get the attributes that should be cast.
      *
      * The times stay plain strings: they are `TIME` columns holding a wall
