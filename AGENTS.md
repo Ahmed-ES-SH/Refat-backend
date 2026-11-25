@@ -39,7 +39,7 @@ This is a **fresh Laravel skeleton**, not a built product yet. Update this secti
 - Installed: Laravel 13, PHP 8.5 runtime (`composer.json` allows `^8.3`), Pest 5, Pint, Laravel Boost, Pail, Vite + Tailwind 4.
 - Present today: `app/Models/User.php`, base `Controller`, `routes/web.php`, the three default migrations, example tests.
 - **Everything in §6 (layout) and §10 (tests) is target state from the plan, not existing code.** Build it milestone by milestone (plan §14: M0 → M7).
-- Local `.env`: SQLite + `database` session/queue/cache drivers. Tests: SQLite `:memory:` (`phpunit.xml`). Docker Compose in the parent folder runs **MySQL 8.4** + phpMyAdmin + backend + frontend + queue worker.
+- Local `.env`: SQLite + `database` session/queue/cache drivers. Tests: SQLite `:memory:` (`phpunit.xml`). Docker Compose in the parent folder runs **MySQL 8.4** + phpMyAdmin + backend + queue worker (no frontend container; the frontend runs host-local).
 - **Planned but not installed yet:** Sanctum, Socialite, Stripe SDK, Reverb/Pusher, Redis, Scramble, Larastan, Mailpit/MinIO in compose. Add each one only in the milestone that needs it, as a deliberate change with approval.
 
 ## 4. Workflow (risk-based)

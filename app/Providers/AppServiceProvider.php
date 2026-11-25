@@ -2,8 +2,14 @@
 
 namespace App\Providers;
 
+use App\Models\AvailabilityRule;
 use App\Models\Center;
+use App\Models\DayOff;
+use App\Models\Doctor;
+use App\Policies\AvailabilityRulePolicy;
 use App\Policies\CenterPolicy;
+use App\Policies\DayOffPolicy;
+use App\Policies\DoctorPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -70,5 +76,8 @@ class AppServiceProvider extends ServiceProvider
     private function registerPolicies(): void
     {
         Gate::policy(Center::class, CenterPolicy::class);
+        Gate::policy(Doctor::class, DoctorPolicy::class);
+        Gate::policy(AvailabilityRule::class, AvailabilityRulePolicy::class);
+        Gate::policy(DayOff::class, DayOffPolicy::class);
     }
 }
