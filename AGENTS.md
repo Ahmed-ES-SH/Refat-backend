@@ -59,6 +59,7 @@ Use the lightest workflow that gives enough confidence for the risk. **Risk beat
 - **One phase document:** use the task's entry in `tasks.md` and the plan's milestone (§14). Do not create overlapping docs; create documentation files only when asked. Update the entry when behavior or decisions change. If a task has no acceptance criteria, add a short brief (objective, scope, behavior, acceptance, verification) before coding.
 - **Human approval** is required when scope, architecture, security, data integrity, cost, or user-visible behavior would materially change.
 - **Skills** (use only if installed; otherwise follow the same steps manually and say so): `writing-plans` for multi-task Medium/High work · `test-driven-development` for non-trivial logic (slot computation, cancellation rules, card status) · `systematic-debugging` on any failure · `verification-before-completion` before reporting done. Do not use `executing-plans`, subagents, or worktrees unless asked. Project skills are in §13.
+- **Guard pass after every edit (mandatory):** after creating or editing **any production code file** (PHP, config, routes, migrations), load `clean-code-guard` and run its self-check on that change before presenting, committing, or moving on — fix every violation first. After creating or editing **any test file or test logic**, load `test-guard` and fix its violations the same way. Both guards stay active for the whole session: re-run the self-check after *each* later edit, never just once at the end. If a skill is not installed for the agent, apply its rules manually from its `SKILL.md` — `clean-code-guard` and `test-guard` live in the user-level `~/.agents/skills/<name>/SKILL.md` — and say so in your report.
 - **Stuck rule:** if the same issue is unresolved after **3 attempts**, stop. Report the failure, the likely cause, what you tried, the latest error output, and what decision you need. Do not repeat cosmetic variations of a failed approach.
 - **Git:** check `git status` first. Never touch, stage, or revert unrelated changes. After each verified task, make a focused commit (Conventional Commits, one concern per commit) when the repo workflow permits. Stage only relevant files. Never commit `.env`, secrets, generated artifacts, or failing/unverified work as complete.
 - **Evidence:** the final report lists the checks run and their results, important scenarios verified, checks not run and why, and known limitations. Never claim something passed unless you ran it and read the output.
@@ -160,9 +161,10 @@ If Docker is not running, start it first (`make start` from the parent folder) �
 2. Classify the task (§4) and state the workflow in one line.
 3. Do the smallest change that satisfies the task and its acceptance criteria. Do not refactor unrelated code.
 4. Write or update tests **with** the feature (§10).
-5. Verify each meaningful task: Pint and the relevant tests (both in Docker, §8). Run Larastan/Scramble only once installed.
-6. **Export OpenAPI docs**: after each completed feature/phase, run `make artisan ARGS="scramble:export"` (from the parent folder) to regenerate `public/docs/api/openapi.json` and verify new endpoints appear in `/docs/api`.
-7. Finish with a short summary: what changed, evidence (checks run and results, checks not run and why), new dependencies (if any), and anything you were unsure about.
+5. After each code-file edit or new code file: run the `clean-code-guard` self-check and fix violations. After each test edit or new test: run `test-guard` and fix violations (§4, §13).
+6. Verify each meaningful task: Pint and the relevant tests (both in Docker, §8). Run Larastan/Scramble only once installed.
+7. **Export OpenAPI docs**: after each completed feature/phase, run `make artisan ARGS="scramble:export"` (from the parent folder) to regenerate `public/docs/api/openapi.json` and verify new endpoints appear in `/docs/api`.
+8. Finish with a short summary: what changed, evidence (checks run and results, checks not run and why), new dependencies (if any), and anything you were unsure about.
 
 **Stop and ask (do not guess) when:**
 - the task needs a table, column, endpoint, or dependency not in the docs;
@@ -190,6 +192,8 @@ Test behavior and risk, not every line. No coverage target. Do not add tests jus
 - [ ] Matches the task, `rifad-database-schema.md`, and the Integration Contract
 - [ ] Authorization enforced and negatively tested
 - [ ] Tests added and passing; Pint clean (Larastan once installed)
+- [ ] `clean-code-guard` self-check run and violations fixed on every production code file touched
+- [ ] `test-guard` run and violations fixed on every test file touched
 - [ ] User-facing API messages respect `Accept-Language` (ar|en)
 - [ ] No new tables, columns, or dependencies beyond the docs (or they are flagged)
 - [ ] API change reflected in the exported OpenAPI and coordinated with the frontend
@@ -208,6 +212,8 @@ Activate the matching skill before working in that domain. Load it with the `ski
 
 - `laravel-best-practices` — any Laravel PHP work.
 - `testing-best-practices` — choosing/writing/reviewing tests.
+- `clean-code-guard` — **run after every production code file edit or creation** (guard-pass mode), and re-run after each later edit in the same session. Rules in §4.
+- `test-guard` — **run after every test file edit or creation, and on all test logic**. Rules in §4.
 - `tailwindcss-development` — Blade/Tailwind markup in this repo (frontend repo has its own copy).
 - `infer-conventions` — before adding files to a new area, to match existing structure.
 - `deploying-to-cloud` — only if the project moves to Laravel Cloud (plan currently targets a VPS).
