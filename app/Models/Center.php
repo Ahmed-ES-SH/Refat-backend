@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\CenterStatus;
+use App\Enums\UserRole;
 use Database\Factories\CenterFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -40,6 +42,7 @@ class Center extends Model
             'approved_at' => 'datetime',
             'latitude' => 'decimal:7',
             'longitude' => 'decimal:7',
+            'status' => CenterStatus::class,
         ];
     }
 
@@ -50,6 +53,17 @@ class Center extends Model
      */
     public function staff(): HasMany
     {
-        return $this->hasMany(User::class);
+        return $this->hasMany(User::class)
+            ->where('role', UserRole::CenterStaff->value);
+    }
+
+    /**
+     * Doctors working at this center.
+     *
+     * @return HasMany<Doctor, $this>
+     */
+    public function doctors(): HasMany
+    {
+        return $this->hasMany(Doctor::class);
     }
 }

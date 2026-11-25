@@ -4,6 +4,8 @@
 **Scope:** portfolio project (Stripe test mode, demo data). Companion docs: `rifad-backend-plan.md`, `rifad-frontend-plan.md`.
 **Suggested repo location:** `docs/DATABASE.md` (reference it from `AGENTS.md`).
 
+> **Amendment 2026-11-24 — `specialties` table removed.** Per `rifad-backend-plan.md` §6 (delta table) and §1 (review item 3), the `specialties` table is replaced by the PHP `Specialty` enum (§2) holding the 12 fixed slugs from §9; `doctors.specialty_id` became `doctors.specialty` `string(60)` with index `(specialty)`. §4.5 keeps its number as a tombstone so `§4.6`–`§4.22` and their cross-references stay valid. See §4.5.
+
 ---
 
 ## 0. Rules for AI agents (read first)
@@ -30,7 +32,7 @@
 | Soft deletes | Only `family_members`. Users, centers, doctors, packages are **deactivated, never deleted** |
 | Stripe IDs | `string(64)`, `unique` where stated |
 | Local-time columns | `availability_rules.start_time/end_time` are in the **center's timezone**. All `*_at` columns are UTC |
-| Language | Stored data is single-language. UI strings are translated in the frontend (`specialties.slug` is the i18n key) |
+| Language | Stored data is single-language. UI strings are translated in the frontend (the `Specialty` slug is the i18n key) |
 | Laravel drivers | `SESSION_DRIVER=redis`, `QUEUE_CONNECTION=redis`, `CACHE_STORE=redis` → **no** `sessions`, `jobs`, `cache` tables |
 
 ---
@@ -45,6 +47,7 @@
 | `Gender` | `male`, `female` | `users.gender`, `family_members.gender` |
 | `FamilyRelation` | `spouse`, `child`, `parent`, `sibling`, `other` | `family_members.relation` |
 | `CenterStatus` | `pending`, `active`, `suspended` | `centers.status` |
+| `Specialty` | `general-medicine`, `pediatrics`, `dentistry`, `dermatology`, `gynecology`, `orthopedics`, `cardiology`, `ophthalmology`, `ent`, `psychiatry`, `nutrition`, `physiotherapy` | `doctors.specialty` (no table; see §4.5) |
 | `AppointmentStatus` | `pending`, `confirmed`, `completed`, `cancelled` (**active** = `pending` or `confirmed`) | `appointments.status` |
 | `BillingInterval` | `month`, `year` | `packages.interval` |
 | `SubscriptionStatus` | `incomplete`, `incomplete_expired`, `trialing`, `active`, `past_due`, `canceled`, `unpaid`, `paused` (mirrors Stripe) | `subscriptions.status` |
@@ -61,7 +64,7 @@
 | Domain | Tables |
 |---|---|
 | Identity | `users`, `password_reset_tokens`, `family_members` |
-| Centers | `centers`, `specialties`, `doctors`, `availability_rules`, `days_off` |
+| Centers | `centers`, `doctors`, `availability_rules`, `days_off` |
 | Booking | `appointments` |
 | Membership & billing | `packages`, `subscriptions`, `membership_cards`, `membership_card_members`, `payments`, `stripe_events` |
 | Chat | `conversations`, `messages` |
@@ -140,14 +143,11 @@ Dependants of a patient (not login accounts).
 - **Indexes:** `(status, city)`, `(name)`.
 - **App rules:** a center registers as `pending`; an admin approves (`active`) or suspends. Only `active` centers appear in the public directory or accept bookings. Suspended centers keep their existing appointments.
 
-### 4.5 `specialties`
-Global reference list (seeded). No timestamps.
+### 4.5 `specialties` — REMOVED 2026-11-24 (no table)
 
-| Column | Type | Null | Constraints / notes |
-|---|---|---|---|
-| id | id | no | PK |
-| slug | string(60) | no | **UNIQUE**; frontend i18n key |
-| name | string(100) | no | default English label |
+**Amended per `rifad-backend-plan.md` §6 (delta table) and §1 (review item 3).** The 12 fixed specialty values do not need a table, a foreign key, or an endpoint, so they live in the PHP `Specialty` enum (§2) and `doctors.specialty` is a plain `string(60)` column with index `(specialty)`.
+
+**Do not create this table or its migration.** The heading is kept only so `§4.6`–`§4.22` retain their numbers and existing cross-references stay valid.
 
 ### 4.6 `doctors`
 
@@ -155,14 +155,14 @@ Global reference list (seeded). No timestamps.
 |---|---|---|---|---|
 | id | id | no | | PK |
 | center_id | foreignId | no | | → `centers.id`, `restrictOnDelete` |
-| specialty_id | foreignId | no | | → `specialties.id`, `restrictOnDelete` |
+| specialty | string(60) | no | | `Specialty` enum (§2) |
 | name | string(120) | no | | |
 | bio | text | yes | | |
 | photo_path | string(255) | yes | | |
 | is_active | boolean | no | `true` | deactivate instead of deleting |
 | created_at / updated_at | timestamps | | | |
 
-- **Indexes:** `(center_id, is_active)`, `(specialty_id)`.
+- **Indexes:** `(center_id, is_active)`, `(specialty)`.
 - **App rules:** staff manage only doctors of their own center.
 
 ### 4.7 `availability_rules`
@@ -440,7 +440,6 @@ users 1─N family_members
 users 1─N appointments       (booker)
 family_members 1─N appointments   (optional)
 centers 1─N doctors
-specialties 1─N doctors
 doctors 1─N availability_rules
 doctors 1─N days_off
 doctors 1─N appointments
@@ -496,23 +495,22 @@ users 1─N activity_logs      (actor)
 2. `users` (FK to `centers`)
 3. `password_reset_tokens`
 4. `family_members`
-5. `specialties`
-6. `doctors`
-7. `availability_rules`
-8. `days_off`
-9. `appointments`
-10. `packages`
-11. `subscriptions`
-12. `membership_cards`
-13. `membership_card_members`
-14. `payments`
-15. `stripe_events`
-16. `conversations`
-17. `messages`
-18. `notifications`
-19. `cms_sections`
-20. `failed_jobs`
-21. *(stretch)* `newsletter_subscribers`, `activity_logs`
+5. `doctors`
+6. `availability_rules`
+7. `days_off`
+8. `appointments`
+9. `packages`
+10. `subscriptions`
+11. `membership_cards`
+12. `membership_card_members`
+13. `payments`
+14. `stripe_events`
+15. `conversations`
+16. `messages`
+17. `notifications`
+18. `cms_sections`
+19. `failed_jobs`
+20. *(stretch)* `newsletter_subscribers`, `activity_logs`
 
 Rename the default Laravel `users` migration file so it sorts after `centers`.
 
@@ -529,7 +527,7 @@ Rename the default Laravel `users` migration file so it sorts after `centers`.
 
 ## 10. Do NOT create
 
-`branches`, `services`, `slots`, `benefits`, `roles` / `permissions` / any permissions package tables, `sessions` / `jobs` / `cache` tables, `user_devices`, `notification_preferences`, `settings`, `media`, `payment_methods`, `refunds`, `reviews`, `*_translations` tables, `national_id` columns.
+`branches`, `services`, `slots`, `benefits`, `specialties` (replaced by the `Specialty` enum — §4.5), `roles` / `permissions` / any permissions package tables, `sessions` / `jobs` / `cache` tables, `user_devices`, `notification_preferences`, `settings`, `media`, `payment_methods`, `refunds`, `reviews`, `*_translations` tables, `national_id` columns.
 
 Roles are the single `users.role` column. Permissions returned by `GET /me` come from a static role→permissions map in config.
 

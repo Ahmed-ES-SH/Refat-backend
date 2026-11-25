@@ -3,10 +3,10 @@
 namespace App\Http\Requests\Auth;
 
 use App\Enums\Locale;
+use App\Support\PasswordPolicy;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 
 class RegisterRequest extends FormRequest
 {
@@ -30,7 +30,7 @@ class RegisterRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'string', 'email', 'max:190', 'unique:users,email'],
-            'password' => ['required', 'string', 'confirmed', Password::min(8)],
+            'password' => ['required', 'string', 'confirmed', PasswordPolicy::forPatients()],
             'phone' => ['nullable', 'string', 'max:30'],
             'locale' => ['sometimes', 'required', Rule::enum(Locale::class)],
         ];

@@ -111,6 +111,19 @@ it('refuses a Google email that Google has not verified', function () {
     $this->assertGuest('web');
 });
 
+it('refuses a Google identity without a verification flag', function () {
+    $googleUser = fakeGoogleUser();
+    unset($googleUser->user['email_verified']);
+
+    Socialite::fake('google', $googleUser);
+
+    $this->get('/api/v1/auth/google/callback')
+        ->assertRedirect(config('app.frontend_url').'/login?error=GOOGLE_EMAIL_UNVERIFIED');
+
+    expect(User::count())->toBe(0);
+    $this->assertGuest('web');
+});
+
 it('refuses a Google identity without an email', function () {
     Socialite::fake('google', fakeGoogleUser(['email' => '']));
 
